@@ -3,19 +3,19 @@ using System;
 
 public class MyBot : IChessBot
 {
-    private int maxDepth = 4;
+    private int MATE = 999;
 
     public Move Think(Board board, Timer timer)
     {
         // Get all legal moves. Select the move with the best score for the
         // current player:
         Move bestMove = new Move();
-        double bestEval = -999;
+        double bestEval = -MATE - 1;
 
         foreach (Move move in board.GetLegalMoves())
         {
             board.MakeMove(move);
-            double moveEval = -NegaMax(board, 1);
+            double moveEval = -SearchEvaluate(board, -MATE, MATE, 4);
             board.UndoMove(move);
 
             if (moveEval > bestEval)
@@ -28,35 +28,50 @@ public class MyBot : IChessBot
         return bestMove;
     }
 
-    public double NegaMax(Board b, int depth)
+    public double SearchEvaluate(Board b, double alpha, double beta, int depth)
     {
-        // If we've reached the maximum search depth, return the heuristic
-        // evaluation of the position.
-        if (depth == maxDepth)
+        // If we've reached the maximum search depth, or if there are no legal
+        // moves, return the heuristic evaluation of the position.
+        if (depth == 0)
         {
-            return Evaluate(b);
+            return HeuristicEvaluate(b, 0);
         }
         else
         {
-            double bestEval = -999;
+            Move[] legalMoves = b.GetLegalMoves();
 
-            foreach (Move move in b.GetLegalMoves())
+            if (legalMoves.Length == 0)
             {
-                b.MakeMove(move);
-                bestEval = Math.Max(bestEval, -NegaMax(b, depth + 1));
-                b.UndoMove(move);
+                return HeuristicEvaluate(b, depth);
             }
 
-            return bestEval;
+            foreach (Move move in legalMoves)
+            {
+                b.MakeMove(move);
+                double score = -SearchEvaluate(b, -beta, -alpha, depth - 1);
+                b.UndoMove(move);
+
+                if (score >= beta)
+                {
+                    return beta;
+                }
+
+                if (score > alpha)
+                {
+                    alpha = score;
+                }
+            }
+
+            return alpha;
         }
     }
 
-    public double Evaluate(Board b)
+    public double HeuristicEvaluate(Board b, int depthLeft)
     {
         // Return a value in pawns from the perspective of the player to move
         if (b.IsInCheckmate())
         {
-            return -500;
+            return -MATE + depthLeft;
         }
 
         if (b.IsInStalemate() || b.IsInsufficientMaterial() || b.IsFiftyMoveDraw())
