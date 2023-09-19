@@ -4,18 +4,29 @@ using System;
 public class MyBot : IChessBot
 {
     private int MATE = 999;
+    private int MAX_DEPTH = 3;
 
     public Move Think(Board board, Timer timer)
     {
-        // Get all legal moves. Select the move with the best score for the
-        // current player:
+        // Get all legal moves. Use a heuristic to prioritize certain ones.
+        Move[] legalMoves = board.GetLegalMoves();
+        int numLegalMoves = legalMoves.Length;
+        int[] movePriorities = new int[numLegalMoves];
+
+        for (int i = 0; i < numLegalMoves; i++)
+        {
+            movePriorities[i] = HeuristicMovePriority(legalMoves[i], board);
+        }
+
+        Array.Sort(movePriorities, legalMoves);
+
+        // Select the move with the best score for the current player:
         Move bestMove = new Move();
         double bestEval = -MATE - 1;
-
-        foreach (Move move in board.GetLegalMoves())
+        foreach (Move move in legalMoves)
         {
             board.MakeMove(move);
-            double moveEval = -SearchEvaluate(board, -MATE, MATE, 4);
+            double moveEval = -SearchEvaluate(board, -MATE, MATE, MAX_DEPTH);
             board.UndoMove(move);
 
             if (moveEval > bestEval)
@@ -26,6 +37,27 @@ public class MyBot : IChessBot
         }
 
         return bestMove;
+    }
+
+    public int HeuristicMovePriority(Move move, Board b) {
+        // Prioritize captures and moving pieces that are attacked. Deprioritize
+        // moving pieces to squares that are attacked. Lower number -> higher
+        // priority
+        int priority = move.IsPromotion ? -6 : 0;
+        if (move.IsCapture)
+        {
+            priority -= (int)move.CapturePieceType; 
+        }
+        if (b.SquareIsAttackedByOpponent(move.TargetSquare))
+        {
+            priority += (int)move.MovePieceType;
+        }
+        if (b.SquareIsAttackedByOpponent(move.StartSquare))
+        {
+            priority -= (int)move.MovePieceType;
+        }
+
+        return priority;
     }
 
     public double SearchEvaluate(Board b, double alpha, double beta, int depth)
