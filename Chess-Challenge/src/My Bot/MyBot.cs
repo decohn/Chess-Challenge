@@ -4,10 +4,13 @@ using System;
 public class MyBot : IChessBot
 {
     private int MATE = 999;
-    private int MAX_DEPTH = 3;
+    private int MAX_DEPTH = 4;
 
     public Move Think(Board board, Timer timer)
     {
+        // Print current position for debugging
+        Console.WriteLine(board.CreateDiagram(true, false, false));
+
         // Get all legal moves. Use a heuristic to prioritize certain ones.
         Move[] legalMoves = board.GetLegalMoves();
         int numLegalMoves = legalMoves.Length;
@@ -34,8 +37,14 @@ public class MyBot : IChessBot
                 bestMove = move;
                 bestEval = moveEval;
             }
+
+            // Print relevant information for debugging:
+            Console.WriteLine(move + "(" + Math.Round(moveEval, 2) + ")");
         }
 
+        Console.WriteLine("Depth: " + MAX_DEPTH);
+        Console.WriteLine("Elapsed time: " + timer.MillisecondsElapsedThisTurn);
+        Console.WriteLine("Best " + bestMove + "(" + Math.Round(bestEval, 2) + ")");
         return bestMove;
     }
 
