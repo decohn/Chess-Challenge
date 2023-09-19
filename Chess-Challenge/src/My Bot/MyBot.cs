@@ -3,7 +3,7 @@ using System;
 
 public class MyBot : IChessBot
 {
-    private int MATE = 999;
+    private int MATE = 99999;
     private int MAX_DEPTH = 4;
 
     public Move Think(Board board, Timer timer)
@@ -25,11 +25,11 @@ public class MyBot : IChessBot
 
         // Select the move with the best score for the current player:
         Move bestMove = new Move();
-        double bestEval = -MATE - 1;
+        int bestEval = -MATE - 100;
         foreach (Move move in legalMoves)
         {
             board.MakeMove(move);
-            double moveEval = -SearchEvaluate(board, -MATE, MATE, MAX_DEPTH);
+            int moveEval = -SearchEvaluate(board, -MATE, MATE, MAX_DEPTH);
             board.UndoMove(move);
 
             if (moveEval > bestEval)
@@ -39,12 +39,13 @@ public class MyBot : IChessBot
             }
 
             // Print relevant information for debugging:
-            Console.WriteLine(move + "(" + Math.Round(moveEval, 2) + ")");
+            Console.WriteLine(move + "(" + (moveEval / 100) + ")");
+            Console.WriteLine("Elapsed time: " + timer.MillisecondsElapsedThisTurn);
         }
 
         Console.WriteLine("Depth: " + MAX_DEPTH);
         Console.WriteLine("Elapsed time: " + timer.MillisecondsElapsedThisTurn);
-        Console.WriteLine("Best " + bestMove + "(" + Math.Round(bestEval, 2) + ")");
+        Console.WriteLine("Best " + bestMove + "(" + (bestEval / 100) + ")");
         return bestMove;
     }
 
@@ -69,7 +70,7 @@ public class MyBot : IChessBot
         return priority;
     }
 
-    public double SearchEvaluate(Board b, double alpha, double beta, int depth)
+    public int SearchEvaluate(Board b, int alpha, int beta, int depth)
     {
         // If we've reached the maximum search depth, or if there are no legal
         // moves, return the heuristic evaluation of the position.
@@ -77,42 +78,40 @@ public class MyBot : IChessBot
         {
             return HeuristicEvaluate(b, 0);
         }
-        else
+
+        Move[] legalMoves = b.GetLegalMoves();
+
+        if (legalMoves.Length == 0)
         {
-            Move[] legalMoves = b.GetLegalMoves();
-
-            if (legalMoves.Length == 0)
-            {
-                return HeuristicEvaluate(b, depth);
-            }
-
-            foreach (Move move in legalMoves)
-            {
-                b.MakeMove(move);
-                double score = -SearchEvaluate(b, -beta, -alpha, depth - 1);
-                b.UndoMove(move);
-
-                if (score >= beta)
-                {
-                    return beta;
-                }
-
-                if (score > alpha)
-                {
-                    alpha = score;
-                }
-            }
-
-            return alpha;
+            return HeuristicEvaluate(b, depth);
         }
+
+        foreach (Move move in legalMoves)
+        {
+            b.MakeMove(move);
+            int score = -SearchEvaluate(b, -beta, -alpha, depth - 1);
+            b.UndoMove(move);
+
+            if (score >= beta)
+            {
+                return beta;
+            }
+
+            if (score > alpha)
+            {
+                alpha = score;
+            }
+        }
+
+        return alpha;
     }
 
-    public double HeuristicEvaluate(Board b, int depthLeft)
+    public int HeuristicEvaluate(Board b, int depthLeft)
     {
         // Return a value in pawns from the perspective of the player to move
         if (b.IsInCheckmate())
         {
-            return -MATE + depthLeft;
+            return -MATE + (100 * depthLeft);
         }
 
         if (b.IsInStalemate() || b.IsInsufficientMaterial() || b.IsFiftyMoveDraw())
@@ -120,12 +119,12 @@ public class MyBot : IChessBot
             return 0;
         }
 
-        double evaluation = 0;       
+        int evaluation = 0;       
         PieceList[] pieceLists = b.GetAllPieceLists();
 
         // Compute a material score using Hans Berliner's system, from White's
         // perspective. Order: {P, N, B, R, Q, K}
-        double[] pieceValues = {1, 3.2, 3.33, 5.1, 8.8, 0};
+        int[] pieceValues = {100, 320, 333, 510, 880, 0};
 
         for (int i = 0; i < 12; i++)
         {
