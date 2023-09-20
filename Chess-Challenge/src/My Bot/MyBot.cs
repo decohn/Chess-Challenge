@@ -4,7 +4,9 @@ using System;
 public class MyBot : IChessBot
 {
     private int MATE = 99999;
-    private int MAX_DEPTH = 4;
+    private int MAX_DEPTH = 3;
+    // Order: {P, N, B, R, Q, K}. Hans Berliner's system.
+    private int[] PIECE_VALUES = {100, 320, 333, 510, 880, 0};
 
     public Move Think(Board board, Timer timer)
     {
@@ -53,18 +55,18 @@ public class MyBot : IChessBot
         // Prioritize captures and moving pieces that are attacked. Deprioritize
         // moving pieces to squares that are attacked. Lower number -> higher
         // priority
-        int priority = move.IsPromotion ? -6 : 0;
+        int priority = move.IsPromotion ? -880 : 0;
         if (move.IsCapture)
         {
-            priority -= (int)move.CapturePieceType; 
+            priority -= PIECE_VALUES[(int)move.CapturePieceType - 1]; 
         }
         if (b.SquareIsAttackedByOpponent(move.TargetSquare))
         {
-            priority += (int)move.MovePieceType;
+            priority += PIECE_VALUES[(int)move.MovePieceType - 1];
         }
         if (b.SquareIsAttackedByOpponent(move.StartSquare))
         {
-            priority -= (int)move.MovePieceType;
+            priority -= PIECE_VALUES[(int)move.MovePieceType - 1];
         }
 
         return priority;
@@ -122,15 +124,12 @@ public class MyBot : IChessBot
         int evaluation = 0;       
         PieceList[] pieceLists = b.GetAllPieceLists();
 
-        // Compute a material score using Hans Berliner's system, from White's
-        // perspective. Order: {P, N, B, R, Q, K}
-        int[] pieceValues = {100, 320, 333, 510, 880, 0};
-
-        for (int i = 0; i < 12; i++)
+        // Compute a material score from White's perspective.
+        for (int i = 0; i < 5; i++)
         {
-            evaluation += pieceValues[i % 6] * (i < 6 ? 1 : -1) * pieceLists[i].Count;
+            evaluation += PIECE_VALUES[i] * (pieceLists[i].Count - pieceLists[i + 6].Count);
         }
-
+    
         // Convert the score from White's perspective to that of the player to move
         return evaluation * (b.IsWhiteToMove ? 1 : -1);
     }
